@@ -85,59 +85,52 @@ public:
 }
 PERFTEST(Haar)
 {
-    Mat img = imread(abspath("basketball1.png"), CV_LOAD_IMAGE_GRAYSCALE);
+    const char * const cascade = "haarcascade_frontalface_alt.xml";
+    const char * const images[] = {"basketball1.png", "bttf301.png", "class57.png"};
+    const int sizes[] = {30, 64, 90};
+    const int flags[] = {0, CV_HAAR_SCALE_IMAGE};
 
-    if (img.empty())
-    {
-        throw runtime_error("can't open basketball1.png");
-    }
+    for(int i=0; i<sizeof(images)/sizeof(images[0]); i++ )
+        for(int s=0; s<sizeof(sizes)/sizeof(sizes[0]); s++ )
+            for(int f=0; f<sizeof(flags)/sizeof(flags[0]); f++ )
+            {
+                SUBTEST << "image: " << images[i] << "; minFaceSize: " << sizes[s] << "x" << sizes[s] << "; flags: " << (flags[f] & CV_HAAR_SCALE_IMAGE ? "SCALE_IMAGE" : "default");
 
-    CascadeClassifier faceCascadeCPU;
+                Mat img = imread(abspath(images[i]), CV_LOAD_IMAGE_GRAYSCALE);
+                if(img.empty()) throw runtime_error(string("can't open ") + images[i]);
 
-    if (!faceCascadeCPU.load(abspath("haarcascade_frontalface_alt.xml")))
-    {
-        throw runtime_error("can't load haarcascade_frontalface_alt.xml");
-    }
+                vector<Rect> faces;
+                CascadeClassifier faceCascadeCPU;
+                if(!faceCascadeCPU.load(abspath(cascade))) throw runtime_error(string("can't load ") + cascade);
 
-    vector<Rect> faces;
-
-    SUBTEST << img.cols << "x" << img.rows << "; scale image";
-    CPU_ON;
-    faceCascadeCPU.detectMultiScale(img, faces,
-                                    1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-    CPU_OFF;
+                CPU_ON;
+                faceCascadeCPU.detectMultiScale(img, faces, 1.1, 3, flags[f], Size(sizes[s], sizes[s]));
+                CPU_OFF;
 
 
-    vector<Rect> oclfaces;
-    ocl::CascadeClassifier_GPU faceCascade;
+                vector<Rect> oclfaces;
+                ocl::oclMat d_img(img);
+                ocl::CascadeClassifier_GPU faceCascade;
+                if(!faceCascade.load(abspath(cascade))) throw runtime_error(string("can't load ") + cascade);
 
-    if (!faceCascade.load(abspath("haarcascade_frontalface_alt.xml")))
-    {
-        throw runtime_error("can't load haarcascade_frontalface_alt.xml");
-    }
+                WARMUP_ON;
+                faceCascade.detectMultiScale(d_img, oclfaces, 1.1, 3, flags[f], Size(sizes[s], sizes[s]));
+                WARMUP_OFF;
 
-    ocl::oclMat d_img(img);
+                if(faces.size() == oclfaces.size())
+                    TestSystem::instance().setAccurate(1, 0);
+                else
+                    TestSystem::instance().setAccurate(0, abs((int)faces.size() - (int)oclfaces.size()));
 
-    WARMUP_ON;
-    faceCascade.detectMultiScale(d_img, oclfaces,
-                                 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-    WARMUP_OFF;
+                faces.clear();
 
-    if(faces.size() == oclfaces.size())
-        TestSystem::instance().setAccurate(1, 0);
-    else
-        TestSystem::instance().setAccurate(0, abs((int)faces.size() - (int)oclfaces.size()));
+                GPU_ON;
+                faceCascade.detectMultiScale(d_img, oclfaces,1.1, 3, flags[f], Size(sizes[s], sizes[s]));
+                GPU_OFF;
 
-    faces.clear();
-
-    GPU_ON;
-    faceCascade.detectMultiScale(d_img, oclfaces,
-                                 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-    GPU_OFF;
-
-    GPU_FULL_ON;
-    d_img.upload(img);
-    faceCascade.detectMultiScale(d_img, oclfaces,
-                                 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-    GPU_FULL_OFF;
+                GPU_FULL_ON;
+                d_img.upload(img);
+                faceCascade.detectMultiScale(d_img, oclfaces,1.1, 3, flags[f], Size(sizes[s], sizes[s]));
+                GPU_FULL_OFF;
+            }
 }
