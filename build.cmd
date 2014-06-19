@@ -1,6 +1,6 @@
-set CMAKE_EXE=W:\Apps\cmake-2.8.12.1-win32-x86\bin\cmake.exe
+set CMAKE_EXE=W:\Apps\cmake-2.8.12.2-win32-x86\bin\cmake.exe
 
-set OpenCV_VER=2.4.8
+set OpenCV_VER=2.4.9
 set OpenCV_DIR=W:\opencv-%OpenCV_VER%\build
 set BUILD_DIR=bin-%OpenCV_VER%
 

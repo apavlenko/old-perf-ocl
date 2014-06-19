@@ -2,6 +2,8 @@ SET(prj_name old_perf_ocl)
 PROJECT(${prj_name})
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
+FIND_PACKAGE(OpenCV REQUIRED)
+
 # fix Visual Studio defaults
 if(MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
@@ -18,17 +20,29 @@ if(MSVC)
         string(REGEX REPLACE "/MDd" "/MTd" ${flag_var} "${${flag_var}}")
       endif()
     endforeach(flag_var)
-
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:atlthunk.lib /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:msvcrtd.lib")
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:libcmt.lib")
-    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /NODEFAULTLIB:libcmtd.lib")
+    #set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:msvcrt.lib")
+    #set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /NODEFAULTLIB:msvcrtd.lib")
+  else()
+    foreach(flag_var
+            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+            CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+      if(${flag_var} MATCHES "/MT")
+        string(REGEX REPLACE "/MT" "/MD" ${flag_var} "${${flag_var}}")
+      endif()
+      if(${flag_var} MATCHES "/MTd")
+        string(REGEX REPLACE "/MTd" "/MDd" ${flag_var} "${${flag_var}}")
+      endif()
+    endforeach(flag_var)
+    #set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:libcmt.lib")
+    #set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /NODEFAULTLIB:libcmtd.lib")
   endif()
 endif()
 
 file(GLOB src RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp)
 ADD_EXECUTABLE(${prj_name}  ${src})
 
-FIND_PACKAGE(OpenCV REQUIRED)
 TARGET_LINK_LIBRARIES(${prj_name} ${OpenCV_LIBS})
 
 if(OpenCV_VERSION VERSION_EQUAL 2.4.6)
